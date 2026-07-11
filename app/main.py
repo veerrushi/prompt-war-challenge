@@ -1,28 +1,60 @@
+"""
+RainReady AI – FastAPI application entry point.
+
+Configures middleware, routers, static-file serving, and exception handlers.
+"""
+
+import logging
+import logging.config
+from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from app.api import chat
-from app.core.limiter import limiter
-import os
-import logging
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+from app.api import chat
+from app.core.config import get_settings
+from app.core.limiter import limiter
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s – %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+STATIC_DIR = Path(__file__).parent.parent / "static"
+
+# ---------------------------------------------------------------------------
+# Application factory
+# ---------------------------------------------------------------------------
+
+settings = get_settings()
 
 app = FastAPI(
     title="RainReady AI",
     description="GenAI Assistant for Monsoon Preparedness & Citizen Assistance",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
-# Add rate limiter to app
+# -- Rate limiting -----------------------------------------------------------
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS Middleware
+# -- CORS --------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,22 +63,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API Routers
-app.include_router(
-    chat.router, 
-    prefix="/api",
-    tags=["Chat"]
-)
+# -- Routers -----------------------------------------------------------------
+app.include_router(chat.router, prefix="/api", tags=["Chat"])
 
-# Serve Static Files
-static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
-if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+# -- Static files ------------------------------------------------------------
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    logger.info("Static files mounted from %s", STATIC_DIR)
+else:
+    logger.warning("Static directory not found at %s – UI will be unavailable", STATIC_DIR)
 
-@app.get("/")
-async def root():
-    """Serve the single-page UI."""
-    index_path = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "Static UI not found"}
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+@app.get("/", include_in_schema=False)
+async def serve_ui() -> FileResponse:
+    """Serve the single-page frontend."""
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    logger.warning("index.html not found at %s", index_path)
+    return JSONResponse(status_code=404, content={"detail": "Frontend not found."})
+
+
+@app.get("/health", tags=["Health"])
+async def health_check() -> dict:
+    """Liveness probe – returns service status."""
+    return {"status": "ok"}

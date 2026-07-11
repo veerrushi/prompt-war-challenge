@@ -1,13 +1,43 @@
+"""
+Pydantic request/response schemas for the chat API.
+
+Keeping schemas in a dedicated module decouples the data contract from
+routing and business logic, making each layer easier to test and evolve.
+"""
+
+from typing import List, Literal
+
 from pydantic import BaseModel, Field
-from typing import List
+
 
 class Message(BaseModel):
-    role: str = Field(..., description="Role of the message sender (user, assistant, system)")
-    content: str = Field(..., description="Content of the message")
+    """A single turn in the conversation.
+
+    Attributes:
+        role: The speaker role – must be one of ``user``, ``assistant``, or ``system``.
+        content: The text content of the message.
+    """
+
+    role: Literal["user", "assistant", "system"] = Field(
+        ...,
+        description="Role of the message sender (user, assistant, or system).",
+    )
+    content: str = Field(..., description="Text content of the message.", min_length=1)
+
 
 class ChatRequest(BaseModel):
-    messages: List[Message] = Field(..., description="List of messages representing the conversation history")
-    
+    """Payload accepted by the ``POST /api/chat`` endpoint.
+
+    Attributes:
+        messages: Ordered list of messages representing the full conversation history.
+    """
+
+    messages: List[Message] = Field(
+        ...,
+        description="Ordered conversation history sent to the LLM.",
+        min_length=1,
+    )
+
     model_config = {
         "json_schema_extra": {
             "example": {
