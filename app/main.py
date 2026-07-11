@@ -71,12 +71,15 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     logger.info("Static files mounted from %s", STATIC_DIR)
 else:
-    logger.warning("Static directory not found at %s – UI will be unavailable", STATIC_DIR)
+    logger.warning(
+        "Static directory not found at %s – UI will be unavailable", STATIC_DIR
+    )
 
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
 
 @app.get("/", include_in_schema=False)
 async def serve_ui() -> FileResponse:

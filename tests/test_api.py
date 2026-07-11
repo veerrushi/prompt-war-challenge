@@ -9,7 +9,6 @@ and rate-limiting behaviour.
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # Root / UI
 # ---------------------------------------------------------------------------
@@ -19,9 +18,10 @@ def test_root_returns_ui_or_404(client: TestClient) -> None:
     """The root route serves index.html when the static dir is present,
     otherwise it returns a structured 404 response."""
     response = client.get("/")
-    assert response.status_code in (200, 404), (
-        f"Unexpected status {response.status_code} from GET /"
-    )
+    assert response.status_code in (
+        200,
+        404,
+    ), f"Unexpected status {response.status_code} from GET /"
 
 
 # ---------------------------------------------------------------------------

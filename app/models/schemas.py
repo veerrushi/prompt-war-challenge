@@ -5,7 +5,7 @@ Keeping schemas in a dedicated module decouples the data contract from
 routing and business logic, making each layer easier to test and evolve.
 """
 
-from typing import List, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -32,7 +32,7 @@ class ChatRequest(BaseModel):
         messages: Ordered list of messages representing the full conversation history.
     """
 
-    messages: List[Message] = Field(
+    messages: list[Message] = Field(
         ...,
         description="Ordered conversation history sent to the LLM.",
         min_length=1,
@@ -42,7 +42,10 @@ class ChatRequest(BaseModel):
         "json_schema_extra": {
             "example": {
                 "messages": [
-                    {"role": "user", "content": "What should I pack for a monsoon emergency kit?"}
+                    {
+                        "role": "user",
+                        "content": "What should I pack for a monsoon emergency kit?",
+                    }
                 ]
             }
         }

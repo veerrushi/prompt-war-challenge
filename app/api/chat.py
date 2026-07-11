@@ -26,7 +26,9 @@ _groq_service = GroqService()
     response_description="Server-sent event stream of text tokens",
 )
 @limiter.limit("20/minute")
-async def chat_endpoint(request: Request, chat_request: ChatRequest) -> StreamingResponse:
+async def chat_endpoint(
+    request: Request, chat_request: ChatRequest
+) -> StreamingResponse:
     """Accept a conversation history and return a streaming AI response.
 
     The endpoint validates the incoming payload via Pydantic, then delegates

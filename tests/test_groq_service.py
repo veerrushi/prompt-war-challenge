@@ -21,7 +21,6 @@ from app.services.groq_service import (
     GroqService,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
@@ -89,7 +88,9 @@ class _MockClient:
         self.chat = _MockChat(chunks)
 
 
-def _make_service(chunks: list[_MockChunk] | None = None) -> tuple[GroqService, _MockClient]:
+def _make_service(
+    chunks: list[_MockChunk] | None = None,
+) -> tuple[GroqService, _MockClient]:
     """Return a GroqService with an injected mock client."""
     service = GroqService()
     mock_client = _MockClient(chunks)
@@ -157,24 +158,32 @@ def test_build_messages_maps_role_and_content() -> None:
 async def test_stream_yields_all_non_empty_tokens() -> None:
     """All non-None, non-empty chunks from the API must be yielded."""
     service, _ = _make_service()
-    chunks = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content="Hi")]
-    )]
+    chunks = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content="Hi")]
+        )
+    ]
     assert "".join(chunks) == "Hello World!"
 
 
 @pytest.mark.asyncio
 async def test_stream_skips_empty_choices() -> None:
     """Chunks with an empty ``choices`` list must be silently skipped."""
-    service, _ = _make_service(chunks=[
-        _MockChunk(None),   # empty choices list
-        _MockChunk("A"),
-        _MockChunk(None),
-        _MockChunk("B"),
-    ])
-    chunks = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content="test")]
-    )]
+    service, _ = _make_service(
+        chunks=[
+            _MockChunk(None),  # empty choices list
+            _MockChunk("A"),
+            _MockChunk(None),
+            _MockChunk("B"),
+        ]
+    )
+    chunks = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content="test")]
+        )
+    ]
     assert "".join(chunks) == "AB"
 
 
@@ -182,9 +191,12 @@ async def test_stream_skips_empty_choices() -> None:
 async def test_stream_passes_correct_model_and_params() -> None:
     """The API call must use MODEL_ID, TEMPERATURE, and MAX_TOKENS constants."""
     service, mock_client = _make_service()
-    _ = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content="check params")]
-    )]
+    _ = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content="check params")]
+        )
+    ]
     kwargs = mock_client.chat.completions.last_kwargs
     assert kwargs["model"] == MODEL_ID
     assert kwargs["temperature"] == TEMPERATURE
@@ -196,9 +208,12 @@ async def test_stream_passes_correct_model_and_params() -> None:
 async def test_stream_sends_system_prompt_as_first_message() -> None:
     """The system prompt must be the first message in the API payload."""
     service, mock_client = _make_service()
-    _ = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content="Where do I evacuate?")]
-    )]
+    _ = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content="Where do I evacuate?")]
+        )
+    ]
     first_msg = mock_client.chat.completions.last_kwargs["messages"][0]
     assert first_msg["role"] == "system"
     assert first_msg["content"] == SYSTEM_PROMPT
@@ -225,9 +240,12 @@ async def test_stream_with_special_characters_in_content() -> None:
     """Messages containing special characters must be forwarded without modification."""
     service, mock_client = _make_service()
     special = "Hello! <>&\"' こんにちは 🌧️"
-    _ = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content=special)]
-    )]
+    _ = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content=special)]
+        )
+    ]
     sent_content = mock_client.chat.completions.last_kwargs["messages"][1]["content"]
     assert sent_content == special
 
@@ -248,9 +266,12 @@ async def test_stream_handles_groq_api_error(monkeypatch) -> None:
     service, mock_client = _make_service()
     monkeypatch.setattr(mock_client.chat.completions, "create", _raise_api_error)
 
-    chunks = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content="test")]
-    )]
+    chunks = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content="test")]
+        )
+    ]
     combined = "".join(chunks)
     assert "⚠️" in combined
     assert len(combined) > 0  # must yield something, not be silent
@@ -266,9 +287,12 @@ async def test_stream_handles_unexpected_exception(monkeypatch) -> None:
     service, mock_client = _make_service()
     monkeypatch.setattr(mock_client.chat.completions, "create", _raise_runtime_error)
 
-    chunks = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content="test")]
-    )]
+    chunks = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content="test")]
+        )
+    ]
     combined = "".join(chunks)
     assert "⚠️" in combined
     assert "unexpected" in combined.lower()
@@ -277,11 +301,16 @@ async def test_stream_handles_unexpected_exception(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_stream_yields_nothing_for_all_empty_chunks() -> None:
     """If all chunks have no content, the generator should yield nothing."""
-    service, _ = _make_service(chunks=[
-        _MockChunk(None),
-        _MockChunk(None),
-    ])
-    chunks = [c async for c in service.generate_chat_stream(
-        [Message(role="user", content="silent test")]
-    )]
+    service, _ = _make_service(
+        chunks=[
+            _MockChunk(None),
+            _MockChunk(None),
+        ]
+    )
+    chunks = [
+        c
+        async for c in service.generate_chat_stream(
+            [Message(role="user", content="silent test")]
+        )
+    ]
     assert chunks == []

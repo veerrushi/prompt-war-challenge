@@ -1,116 +1,145 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const chatHistory = document.getElementById('chat-history');
-    const chatForm = document.getElementById('chat-form');
-    const userInput = document.getElementById('user-input');
-    const sendBtn = document.getElementById('send-btn');
+class RainReadyChat {
+    constructor() {
+        this.chatHistory = document.getElementById('chat-history');
+        this.chatForm = document.getElementById('chat-form');
+        this.userInput = document.getElementById('user-input');
+        this.sendBtn = document.getElementById('send-btn');
+        
+        this.messages = [];
+        this.initEventListeners();
+    }
 
-    // State to maintain conversation history
-    let messages = [];
+    initEventListeners() {
+        // Auto-resize textarea
+        this.userInput.addEventListener('input', () => this.handleInputResize());
 
-    // Auto-resize textarea
-    userInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-        if(this.value.trim() === '') {
-            this.style.height = 'auto';
+        // Handle Enter key (Shift+Enter for new line)
+        this.userInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
+
+        // Form submission
+        this.chatForm.addEventListener('submit', (e) => this.handleSubmit(e));
+    }
+
+    handleInputResize() {
+        this.userInput.style.height = 'auto';
+        this.userInput.style.height = `${this.userInput.scrollHeight}px`;
+        if (this.userInput.value.trim() === '') {
+            this.userInput.style.height = 'auto';
         }
-    });
+    }
 
-    // Handle Enter key (Shift+Enter for new line)
-    userInput.addEventListener('keydown', (e) => {
+    handleKeyDown(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            chatForm.dispatchEvent(new Event('submit'));
+            this.chatForm.dispatchEvent(new Event('submit'));
         }
-    });
+    }
 
-    chatForm.addEventListener('submit', async (e) => {
+    async handleSubmit(e) {
         e.preventDefault();
         
-        const content = userInput.value.trim();
+        const content = this.userInput.value.trim();
         if (!content) return;
 
-        // 1. Add user message to UI
-        appendMessage('user', content);
-        messages.push({ role: 'user', content: content });
+        // Add user message to UI and history
+        this.appendMessage('user', content);
+        this.messages.push({ role: 'user', content });
         
-        // Reset input
-        userInput.value = '';
-        userInput.style.height = 'auto';
-        sendBtn.disabled = true;
+        this.resetInput();
 
-        // 2. Add empty assistant message for streaming
-        const assistantMsgDiv = createMessageContainer('assistant');
-        const contentDiv = assistantMsgDiv.querySelector('.message-content');
-        chatHistory.appendChild(assistantMsgDiv);
+        // Add empty assistant message container for streaming
+        const { messageDiv, contentDiv } = this.createAssistantMessageContainer();
+        this.chatHistory.appendChild(messageDiv);
         
-        // Show loading state initially
-        contentDiv.innerHTML = `
+        // Show initial loading state
+        contentDiv.innerHTML = this.getLoadingIndicatorHTML();
+        this.scrollToBottom();
+
+        try {
+            await this.streamResponse(contentDiv);
+        } catch (error) {
+            console.error('Chat error:', error);
+            this.handleError(contentDiv, error);
+        } finally {
+            this.sendBtn.disabled = false;
+            this.userInput.focus();
+        }
+    }
+
+    resetInput() {
+        this.userInput.value = '';
+        this.userInput.style.height = 'auto';
+        this.sendBtn.disabled = true;
+    }
+
+    createAssistantMessageContainer() {
+        const messageDiv = this.createMessageElement('assistant');
+        const contentDiv = messageDiv.querySelector('.message-content');
+        return { messageDiv, contentDiv };
+    }
+
+    getLoadingIndicatorHTML() {
+        return `
             <div class="loading-indicator">
                 <div class="dot"></div>
                 <div class="dot"></div>
                 <div class="dot"></div>
             </div>
         `;
-        scrollToBottom();
+    }
 
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ messages: messages })
-            });
+    async streamResponse(contentDiv) {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ messages: this.messages })
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Server error: ${response.status}`);
-            }
-
-            // Clear loading indicator
-            contentDiv.innerHTML = '';
-            
-            // Set up stream reading
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-            let fullResponse = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, { stream: true });
-                fullResponse += chunk;
-                
-                // Parse markdown and update UI incrementally
-                contentDiv.innerHTML = marked.parse(fullResponse);
-                scrollToBottom();
-            }
-
-            // Save full response to history
-            messages.push({ role: 'assistant', content: fullResponse });
-
-        } catch (error) {
-            console.error('Chat error:', error);
-            contentDiv.innerHTML = `<span class="error-message">Error: ${error.message}. Please try again.</span>`;
-            // Remove the last user message from state so they can try again if they want
-            messages.pop();
-        } finally {
-            sendBtn.disabled = false;
-            userInput.focus();
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Server error: ${response.status}`);
         }
-    });
 
-    function createMessageContainer(role) {
+        // Clear loading indicator
+        contentDiv.innerHTML = '';
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let fullResponse = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            fullResponse += chunk;
+            
+            // Parse markdown and update UI incrementally
+            contentDiv.innerHTML = marked.parse(fullResponse);
+            this.scrollToBottom();
+        }
+
+        // Save full response to history
+        this.messages.push({ role: 'assistant', content: fullResponse });
+    }
+
+    handleError(contentDiv, error) {
+        contentDiv.innerHTML = `<span class="error-message">Error: ${error.message}. Please try again.</span>`;
+        // Remove the last user message from state so they can try again
+        this.messages.pop();
+    }
+
+    createMessageElement(role) {
         const div = document.createElement('div');
         div.className = `message ${role}`;
         div.innerHTML = `<div class="message-content"></div>`;
         return div;
     }
 
-    function appendMessage(role, content) {
-        const div = createMessageContainer(role);
+    appendMessage(role, content) {
+        const div = this.createMessageElement(role);
         const contentDiv = div.querySelector('.message-content');
         
         if (role === 'assistant') {
@@ -120,14 +149,18 @@ document.addEventListener('DOMContentLoaded', () => {
             contentDiv.textContent = content;
         }
         
-        chatHistory.appendChild(div);
-        scrollToBottom();
+        this.chatHistory.appendChild(div);
+        this.scrollToBottom();
     }
 
-    function scrollToBottom() {
-        chatHistory.scrollTo({
-            top: chatHistory.scrollHeight,
+    scrollToBottom() {
+        this.chatHistory.scrollTo({
+            top: this.chatHistory.scrollHeight,
             behavior: 'smooth'
         });
     }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    new RainReadyChat();
 });

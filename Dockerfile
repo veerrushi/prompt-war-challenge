@@ -1,12 +1,13 @@
 # Use official lightweight Python image
 FROM python:3.11-slim
 
-# Prevent .pyc files and enable unbuffered logs
+# Prevent .pyc files, enable unbuffered logs, and set default port
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PORT=10000
 
-# Default port — overridden by Render (10000) or GCP Cloud Run (8080) at runtime
-ENV PORT=10000
+# Create a non-root user and group for better security and maintainability
+RUN addgroup --system appuser && adduser --system --group appuser
 
 # Set working directory
 WORKDIR /app
@@ -18,6 +19,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application source
 COPY app/ ./app/
 COPY static/ ./static/
+
+# Change ownership of the application files to the non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to the non-root user
+USER appuser
 
 # Expose the port so container orchestrators can inspect it
 EXPOSE $PORT

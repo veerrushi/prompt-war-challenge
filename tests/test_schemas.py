@@ -10,7 +10,6 @@ from pydantic import ValidationError
 
 from app.models.schemas import ChatRequest, Message
 
-
 # ---------------------------------------------------------------------------
 # Message model
 # ---------------------------------------------------------------------------
@@ -85,11 +84,13 @@ class TestChatRequest:
 
     def test_valid_multi_turn_request(self) -> None:
         """Multiple alternating roles must all be accepted."""
-        req = ChatRequest(messages=[
-            {"role": "user", "content": "Is it safe?"},
-            {"role": "assistant", "content": "Check local alerts."},
-            {"role": "user", "content": "I'm in Chennai."},
-        ])
+        req = ChatRequest(
+            messages=[
+                {"role": "user", "content": "Is it safe?"},
+                {"role": "assistant", "content": "Check local alerts."},
+                {"role": "user", "content": "I'm in Chennai."},
+            ]
+        )
         assert len(req.messages) == 3
 
     def test_empty_messages_raises_validation_error(self) -> None:
