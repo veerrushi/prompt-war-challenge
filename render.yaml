@@ -1,0 +1,37 @@
+# render.yaml — Infrastructure-as-Code for Render
+#
+# Render reads this file automatically when the repo is connected.
+# Docs: https://render.com/docs/render-yaml-spec
+#
+# HOW TO USE:
+#   1. Push this file to your GitHub/GitLab repo
+#   2. Go to https://dashboard.render.com → New → Blueprint
+#   3. Connect your repo — Render will read this file automatically
+#   4. Set GROQ_API_KEY in the Render dashboard when prompted
+
+services:
+  - type: web
+    name: rainready-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+
+    # Free tier (change to "starter" for always-on)
+    plan: free
+
+    # Closest region to India available on Render free tier
+    region: singapore
+
+    # Render injects PORT automatically; we expose 8080 in the Dockerfile
+    dockerContext: .
+
+    envVars:
+      - key: PORT
+        value: "10000"         # Render free tier requires port 10000
+      - key: GROQ_API_KEY
+        sync: false            # Render will prompt you to enter this secret
+
+    # Liveness probe — uses the /health endpoint we added
+    healthCheckPath: /health
+
+    # Automatically redeploy on every push to the main branch
+    autoDeploy: true
