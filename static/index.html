@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RainReady AI</title>
+    <meta name="description" content="A GenAI assistant to help you prepare for the monsoon season with personalized checklists and safety guidance.">
+    <link rel="stylesheet" href="/static/styles.css">
+    <!-- Google Fonts for Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-content">
+                <h1>RainReady AI 🌧️</h1>
+                <p>Your guide to staying safe before, during, and after severe weather.</p>
+            </div>
+        </header>
+
+        <main class="chat-container">
+            <div id="chat-history" class="chat-history" role="log" aria-live="polite" aria-atomic="false">
+                <div class="message assistant">
+                    <div class="message-content">
+                        Hello! I am your Monsoon Preparedness Assistant. To help you best, could you tell me a little about where you are located and if you have any specific concerns (e.g., travel, family safety, home flooding)?
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <form id="chat-form" aria-label="Chat input form">
+                    <textarea 
+                        id="user-input" 
+                        placeholder="Type your message here..." 
+                        aria-label="Your message"
+                        rows="1"
+                        required
+                    ></textarea>
+                    <button type="submit" id="send-btn" aria-label="Send message">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Include marked.js for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
